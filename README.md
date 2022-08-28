@@ -1,1 +1,2 @@
-# rize-cracked
+### "RIZE" cracked
+# Highly incompetent security, badly written website that leaks file names, boasted by an owner that likes underage cat girls. And it costs $30, yikes... 
