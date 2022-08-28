@@ -1,2 +1,2 @@
-### "RIZE" cracked
-Highly incompetent security, badly written website that leaks file names, boasted by an owner that likes underage cat girls. And it costs $30, <b>yikes</b>... 
+### RIZE Cracked
+TL;DR: Highly incompetent security, badly written website that leaks file names, boasted by an owner that likes underage cat girls. Cherry on top, it costs $30.. <b>Yikes...</b>
