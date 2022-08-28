@@ -1,4 +1,8 @@
 /* @ Aero#1420 - don't skid my shit */
+const target = 'https://vanis.io/zimekisapedophile';
+if (location.href !== target) {
+	location.href = target;
+}
 
 window.customModal=((e,a)=>{document.getElementsByClassName("fa-clipboard-list")[0].click(),setTimeout(()=>{document.getElementsByClassName("content fade-box")[0].getElementsByTagName("div")[0].innerHTML=e,a&&setTimeout(a,50)},50)});
 
