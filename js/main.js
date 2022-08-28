@@ -1,5 +1,5 @@
 /* @ Aero#1420 - don't skid my shit */
-const target = 'https://vanis.io/zimekisapedophile';
+const target = 'https://vanis.io/zimek-is-a-pedophile';
 if (location.href !== target) {
 	location.href = target;
 }
