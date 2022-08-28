@@ -1,5 +1,4 @@
 const FPSmode = "?fps" === location.search;
-FPSmode && (document.title = "Vanis.io - @discord.me/axoninf");
 class Line extends PIXI.Graphics {
 	constructor(e, t, s) {
 		super();
