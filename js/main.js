@@ -1,6 +1,9 @@
-/* @ Aero#1420 - don't skid my shit */
-const target = 'https://vanis.io/zimek-is-a-pedophile';
-if (location.href !== target) {
+(function main() {
+/* @Aero#1420 - don't skid my shit */
+
+if (location.search === '?vanilla') {
+	return;
+} else if (location.href !== 'https://vanis.io/zimek-is-a-pedophile') {
 	location.href = target;
 }
 
@@ -8492,7 +8495,7 @@ String.prototype.toHHMMSS = function() {
                 console.warn(code);
             }
         }
-    })(window);
+    })/*(window);*/
 
 /*const RISE_EXE = X => {
 	if (GAME.disableGateway) return void(document.body.innerHTML = '\n    <center style="font-size:50px;font-weight:bold;margin-top:10%;font-family:Arial">Connection to RISE.EXE has been lost<br>refresh the page to re-connect</center>\n    ');
@@ -8714,4 +8717,5 @@ $("#player-data").getElementsByTagName("div")[0].innerHTML += `<i data-v-1bcde71
 		confirmButtonText: 'Okay'
 	};
 	Swal.fire(options);
+})();
 })();
